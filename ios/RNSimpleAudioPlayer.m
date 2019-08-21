@@ -5,9 +5,9 @@
 #import <AVFoundation/AVFoundation.h>
 
 @implementation RNSimpleAudioPlayer {
-    RNPlayer* player;
+    RNSPlayer* player;
     AVURLAsset *asset;
-    RNPlayerItem *playerItem;
+    RNSPlayerItem *playerItem;
 }
 
 - (dispatch_queue_t)methodQueue
@@ -108,8 +108,8 @@ RCT_EXPORT_METHOD(prepare:(NSString *)path
     NSURL *url = [self findUrlForPath:path];
     if (url) {
         asset = [AVURLAsset assetWithURL: url];
-        playerItem = (RNPlayerItem *)[RNPlayerItem playerItemWithAsset: asset];
-        player = [[RNPlayer alloc]
+        playerItem = (RNSPlayerItem *)[RNSPlayerItem playerItemWithAsset: asset];
+        player = [[RNSPlayer alloc]
                   initWithPlayerItem:playerItem];
         // setup event listners
         [player addObserver:self forKeyPath:@"status" options:0 context:nil];
