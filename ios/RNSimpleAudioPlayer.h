@@ -1,11 +1,12 @@
-
-#if __has_include("RCTBridgeModule.h")
-#import "RCTBridgeModule.h"
-#else
+#if __has_include(<React/RCTBridgeModule.h>)
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+#else
+#import "RCTBridgeModule.h"
+#import "RCTEventEmitter.h"
 #endif
 
-@interface RNSimpleAudioPlayer : NSObject <RCTBridgeModule>
+
+@interface RNSimpleAudioPlayer : RCTEventEmitter <RCTBridgeModule>
 
 @end
-  
