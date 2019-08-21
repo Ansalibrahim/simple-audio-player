@@ -1,7 +1,7 @@
 {
   "name": "react-native-simple-audio-player",
   "version": "1.0.0",
-  "description": "",
+  "description": "Audio Player",
   "homepage": "https://github.com/ansalibrahim/simple-audio-player",
   "main": "index.js",
   "scripts": {
@@ -10,8 +10,8 @@
   "keywords": [
     "react-native"
   ],
-  "author": "",
-  "license": "",
+  "author": "ansalibrahim",
+  "license": "MIT",
   "peerDependencies": {
     "react-native": "^0.41.2",
     "react-native-windows": "0.41.0-rc.1"
