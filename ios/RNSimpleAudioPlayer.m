@@ -193,5 +193,11 @@ RCT_EXPORT_METHOD(restart:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRe
     resolve([NSNull null]);
 }
 
+RCT_EXPORT_METHOD(seekTo:(float)seekValue)
+{
+    CMTime newTime = CMTimeMakeWithSeconds(seekValue, 1);
+    [player seekToTime:newTime];
+}
+
 @end
 
