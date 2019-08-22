@@ -4,6 +4,8 @@
 #import "RNSPlayerItem.h"
 #import <AVFoundation/AVFoundation.h>
 
+
+
 @implementation RNSimpleAudioPlayer {
     RNSPlayer* player;
     AVURLAsset *asset;
@@ -15,17 +17,54 @@
     return dispatch_get_main_queue();
 }
 
++ (BOOL)requiresMainQueueSetup
+{
+    return NO;
+}
+
+- (NSDictionary *)constantsToExport
+{
+    return @{ @"EVENT_TYPES": @{
+                      @"STATUS_EVENT": STATUS_EVENT,
+                      @"POSITION_EVENT": POSITION_EVENT
+                      },
+              @"STATUS": @{
+                      @"PREPARING": PREPARING,
+                      @"READY": READY,
+                      @"PLAYING": PLAYING,
+                      @"PAUSED": PAUSED,
+                      @"ERROR": ERROR
+                      }
+              };
+}
+
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"RNAudio"];
+}
+
+- (void)tellJs:(NSObject *)event {
+    [self sendEventWithName:@"RNAudio" body:event];
+}
+
+-(void)sendStatusEvents:(NSString *) status {
+    NSDictionary* event = @{@"type": STATUS_EVENT, @"status":status };
+    [self tellJs:event];
+}
+
+-(void)sendPositionEvents:(NSString *) status {
+    NSDictionary* event = @{@"type": POSITION_EVENT, @"currentPosition":status };
+    [self tellJs:event];
+}
+
 
 - (NSURL *)findUrlForPath:(NSString *)path {
     NSURL *url = nil;
-    
     NSArray *pathComponents = [NSArray arrayWithObjects:
                                [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject],
                                path,
                                nil];
-    
     NSString *possibleUrl = [NSString pathWithComponents:pathComponents];
-    
     if (![[NSFileManager defaultManager] fileExistsAtPath:possibleUrl]) {
         NSString *fileWithoutExtension = [path stringByDeletingPathExtension];
         NSString *extension = [path pathExtension];
@@ -41,12 +80,10 @@
             } else {
                 url = [NSURL URLWithString:path];
             }
-            
         }
     } else {
         url = [NSURL fileURLWithPathComponents:pathComponents];
     }
-    
     return url;
 }
 
@@ -58,23 +95,18 @@
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
     // Will be called when AVPlayer finishes playing playerItem
     [self stop];
+    [self sendStatusEvents:READY];
 }
 
 RCT_EXPORT_MODULE()
-
-+ (BOOL)requiresMainQueueSetup
-{
-    return YES;
-}
-
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
                       ofObject:(id)object
                         change:(NSDictionary *)change
                        context:(void *)context {
     if ([keyPath isEqualToString:@"status"]) {
-        NSDictionary* response = @{@"event": @"status", @"status": [[NSNumber numberWithFloat:player.status] stringValue]};
-        [self tellJs:@"RNAudio" body:response];
+        NSDictionary* event = @{@"event": @"status", @"status": [[NSNumber numberWithFloat:player.status] stringValue]};
+        [self tellJs:event];
         NSLog(@"[AudioPlayer] player status: %li", player.status);
     } else if ([keyPath isEqualToString:@"rate"]) {
         float rate = [change[NSKeyValueChangeNewKey] floatValue];
@@ -89,22 +121,13 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (NSArray<NSString *> *)supportedEvents {
-    return @[@"RNAudio"];
-}
-
-- (void)tellJs:(NSString *)eventName
-          body:(NSObject *)body {
-    [self sendEventWithName:eventName body:body];
-}
-
-
 
 RCT_EXPORT_METHOD(prepare:(NSString *)path
                   options:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
+    [self sendStatusEvents:PREPARING];
     NSURL *url = [self findUrlForPath:path];
     if (url) {
         asset = [AVURLAsset assetWithURL: url];
@@ -118,14 +141,16 @@ RCT_EXPORT_METHOD(prepare:(NSString *)path
         [player addPeriodicTimeObserverForInterval:(timeInterval) queue:dispatch_get_main_queue() usingBlock:^(CMTime time){
             NSTimeInterval seconds = CMTimeGetSeconds(time);
             NSInteger intSec = seconds;
-            NSString* strSec = [NSString stringWithFormat:@"%li", intSec];
-            NSLog(@"[AudioPlayer] player position: %@", strSec);
+//            NSString* strSec = [NSString stringWithFormat:@"%li", intSec];
+            [self sendPositionEvents:[NSString stringWithFormat:@"%li", intSec]];
+//            NSLog(@"[AudioPlayer] player position: %@", strSec);
         }];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
         //
         Float64 totalDurationSeconds = CMTimeGetSeconds(player.currentItem.asset.duration);
         NSDictionary* response = @{@"duration": @(totalDurationSeconds * 1000), @"path": url};
         resolve(response);
+        [self sendStatusEvents:READY];
     } else {
         NSError *err = [NSError errorWithDomain:@"invalid_URL"
                                            code:500
@@ -133,6 +158,7 @@ RCT_EXPORT_METHOD(prepare:(NSString *)path
                                                   NSLocalizedDescriptionKey:@"invalid uri; please check path passed"
                                                   }];
         reject(@"error",[[err userInfo] description], err);
+        [self sendStatusEvents:ERROR];
     }
 }
 
@@ -142,20 +168,21 @@ RCT_EXPORT_METHOD( play:
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     [player play];
-    NSDictionary* response = @{@"duration": @"1000000", @"path": @"pppppaaaa"};
-    [self tellJs:@"RNAudio" body:response];
+    [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
 }
 
 RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     [self stop];
+    [self sendStatusEvents:READY];
     resolve([NSNull null]);
 }
 
 RCT_EXPORT_METHOD(pause:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     [player pause];
+    [self sendStatusEvents:PAUSED];
     resolve([NSNull null]);
 }
 
@@ -182,6 +209,7 @@ RCT_EXPORT_METHOD(setVolume: (float)volume)
 RCT_EXPORT_METHOD(resume:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     [player play];
+    [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
 }
 
@@ -190,6 +218,7 @@ RCT_EXPORT_METHOD(restart:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRe
 {
     [self stop];
     [player play];
+    [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
 }
 
@@ -198,6 +227,7 @@ RCT_EXPORT_METHOD(seekTo:(float)seekValue)
     CMTime newTime = CMTimeMakeWithSeconds(seekValue, 1);
     [player seekToTime:newTime];
 }
+
 
 @end
 
