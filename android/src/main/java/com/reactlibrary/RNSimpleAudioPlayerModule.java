@@ -222,6 +222,10 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
   }
 
   private void prepareMediaPlayer(String path, final Promise promise) {
+    if (path == null || path == "") {
+      promise.reject("Error", "File not found.");
+      sendStatusEvents(IDLE);
+    }
     final WritableMap response = Arguments.createMap();
     try {
       if (path.startsWith("http")) {
@@ -241,7 +245,6 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
         Uri uri = getFileUri(path);
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setDataSource(reactContext, uri);
-        mediaPlayer.setDataSource(path);
         mediaPlayer.prepare();
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
           @Override
