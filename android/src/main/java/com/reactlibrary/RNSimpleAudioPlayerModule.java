@@ -36,6 +36,7 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
   private final ReactApplicationContext reactContext;
   private MediaPlayer mediaPlayer;
   private MediaObserver observer = null;
+  private Thread thread = null;
 
   // status events
   private final String PREPARING = "RNS_AUDIO/PREPARING";
@@ -159,10 +160,17 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
         WritableMap response = Arguments.createMap();
         promise.resolve(response);
         sendStatusEvents(READY);
+        if (thread != null) {
+          observer.stop();
+          thread.join();
+        }
       } else {
         promise.reject("Error", "Unable to play audio now.");
       }
     } catch (IllegalStateException e) {
+      e.printStackTrace();
+      promise.reject("Error", "cannot play audio now");
+    } catch (InterruptedException e) {
       e.printStackTrace();
       promise.reject("Error", "cannot play audio now");
     }
@@ -309,7 +317,7 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
         if(mediaPlayer != null) {
           sendPositionEvents(mediaPlayer.getCurrentPosition());
           try {
-            Thread.sleep(200);
+            Thread.sleep(500);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
@@ -329,7 +337,8 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
     });
     observer = new MediaObserver();
     mediaPlayer.start();
-    new Thread(observer).start();
+    thread = new Thread(observer);
+    thread.start();
   }
 
 }
