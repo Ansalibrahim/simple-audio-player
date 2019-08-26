@@ -293,10 +293,8 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
   private void sendEvent(WritableMap params) {
     reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit("RNAudio", params);
+            .emit("RNSAudio", params);
   }
-
-
 
   private class MediaObserver implements Runnable {
     private AtomicBoolean stop = new AtomicBoolean(false);

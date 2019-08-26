@@ -40,11 +40,11 @@
 
 
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"RNAudio"];
+    return @[@"RNSAudio"];
 }
 
 - (void)tellJs:(NSObject *)event {
-    [self sendEventWithName:@"RNAudio" body:event];
+    [self sendEventWithName:@"RNSAudio" body:event];
 }
 
 -(void)sendStatusEvents:(NSString *) status {
@@ -123,7 +123,6 @@ RCT_EXPORT_MODULE()
 
 
 RCT_EXPORT_METHOD(prepare:(NSString *)path
-                  options:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
