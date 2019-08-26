@@ -140,6 +140,8 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
     try {
       if (mediaPlayer != null && mediaPlayer.isPlaying()) {
         mediaPlayer.pause();
+        observer.stop();
+        thread.join();
         WritableMap response = Arguments.createMap();
         promise.resolve(response);
         sendStatusEvents(PAUSED);
@@ -147,6 +149,9 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
         promise.reject("Error", "Unable to play audio now.");
       }
     } catch (IllegalStateException e) {
+      e.printStackTrace();
+      promise.reject("Error", "cannot play audio now");
+    } catch (InterruptedException e) {
       e.printStackTrace();
       promise.reject("Error", "cannot play audio now");
     }
@@ -216,24 +221,36 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
     }
   }
 
-  private void prepareMediaPlayer(String path, Promise promise) {
-    WritableMap response = Arguments.createMap();
+  private void prepareMediaPlayer(String path, final Promise promise) {
+    final WritableMap response = Arguments.createMap();
     try {
       if (path.startsWith("http")) {
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setDataSource(path);
         mediaPlayer.prepare();
-        promise.resolve(response);
-        sendStatusEvents(READY);
+        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+          @Override
+          public void onPrepared(MediaPlayer mediaPlayer) {
+            response.putString("duration", mediaPlayer.getDuration() + "");
+            promise.resolve(response);
+            sendStatusEvents(READY);
+          }
+        });
       } else {
         Uri uri = getFileUri(path);
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setDataSource(reactContext, uri);
         mediaPlayer.setDataSource(path);
         mediaPlayer.prepare();
-        promise.resolve(response);
-        sendStatusEvents(READY);
+        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+          @Override
+          public void onPrepared(MediaPlayer mediaPlayer) {
+            response.putString("duration", mediaPlayer.getDuration() + "");
+            promise.resolve(response);
+            sendStatusEvents(READY);
+          }
+        });
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -286,15 +303,15 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
 
   private void sendStatusEvents(String status) {
     WritableMap params = Arguments.createMap();
-    params.putString("event", "status");
+    params.putString("type", STATUS_EVENT);
     params.putString("status", status);
     sendEvent(params);
   }
 
   private void sendPositionEvents(int progress) {
     WritableMap params = Arguments.createMap();
-    params.putString("event", "status");
-    params.putString("status", progress + "");
+    params.putString("type", POSITION_EVENT);
+    params.putString("currentPosition", progress + "");
     sendEvent(params);
   }
 
