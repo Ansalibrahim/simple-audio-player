@@ -1,7 +1,8 @@
 import {
   NativeModules,
   NativeEventEmitter,
-  DeviceEventEmitter
+  DeviceEventEmitter,
+  Platform
 } from "react-native";
 
 class RNSAudioPlayer {
@@ -27,7 +28,8 @@ class RNSAudioPlayer {
   };
 
   play = () => {
-    return audioPlayer.play({});
+    if (Platform.OS === "ios") return audioPlayer.play({});
+    return audioPlayer.play();
   };
 
   pause = () => {
@@ -49,3 +51,4 @@ RNSAudioPlayer.EVENT_TYPES = NativeModules.RNSimpleAudioPlayer.EVENT_TYPES;
 RNSAudioPlayer.STATUS = NativeModules.RNSimpleAudioPlayer.STATUS;
 
 export default RNSAudioPlayer;
+
