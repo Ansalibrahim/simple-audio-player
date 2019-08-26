@@ -12,6 +12,7 @@
  NSString* const PLAYING = @"RNS_AUDIO/PLAYING";
  NSString* const PAUSED = @"RNS_AUDIO/PAUSED";
  NSString* const ERROR = @"RNS_AUDIO/ERROR";
+ NSString* const IDLE = @"RNS_AUDIO/IDLE";
 
 // buffering events
 //const NSString* BUFFERING = @"RNS_AUDIO/BUFFERING";

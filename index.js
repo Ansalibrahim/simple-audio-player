@@ -4,35 +4,48 @@ import {
   DeviceEventEmitter
 } from "react-native";
 
-function RNSAudioPlayer() {
-  const audioPlayer = NativeModules.RNSimpleAudioPlayer;
-  const emitter =
-    Platform.OS === "ios"
-      ? new NativeEventEmitter(audioPlayer)
-      : DeviceEventEmitter;
+class RNSAudioPlayer {
+  constructor() {
+    audioPlayer = NativeModules.RNSimpleAudioPlayer;
+    emitter =
+      Platform.OS === "ios"
+        ? new NativeEventEmitter(audioPlayer)
+        : DeviceEventEmitter;
+    console.log("audioPlayer", audioPlayer);
+  }
 
-  prepare = (url, options = {}, cb) => {
-    return audioPlayer.prepare(url, options);
+  prepare = url => {
+    return audioPlayer.prepare(url);
   };
+
   addListener = cb => {
     emitter.addListener("RNSAudio", cb);
   };
+
   removeListener = cb => {
     emitter.removeListener("RNSAudio", cb);
   };
+
   play = () => {
-    return audioPlayer.play();
+    return audioPlayer.play({});
   };
+
   pause = () => {
     return audioPlayer.pause();
   };
+
   stop = () => {
     return audioPlayer.stop();
   };
+
   setVolume = newValue => {
     audioPlayer.setVolume(newValue);
   };
+
   restart = () => {};
 }
+
+RNSAudioPlayer.EVENT_TYPES = NativeModules.RNSimpleAudioPlayer.EVENT_TYPES;
+RNSAudioPlayer.STATUS = NativeModules.RNSimpleAudioPlayer.STATUS;
 
 export default RNSAudioPlayer;

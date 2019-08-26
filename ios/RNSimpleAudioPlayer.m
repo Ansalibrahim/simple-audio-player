@@ -10,6 +10,7 @@
     RNSPlayer* player;
     AVURLAsset *asset;
     RNSPlayerItem *playerItem;
+    id timeObserverToken;
 }
 
 - (dispatch_queue_t)methodQueue
@@ -19,7 +20,7 @@
 
 + (BOOL)requiresMainQueueSetup
 {
-    return NO;
+    return YES;
 }
 
 - (NSDictionary *)constantsToExport
@@ -29,6 +30,7 @@
                       @"POSITION_EVENT": POSITION_EVENT
                       },
               @"STATUS": @{
+                      @"IDLE": IDLE,
                       @"PREPARING": PREPARING,
                       @"READY": READY,
                       @"PLAYING": PLAYING,
@@ -90,11 +92,14 @@
 -(void)stop{
     [player seekToTime:CMTimeMake(0, 1)];
     [player pause];
+//    [self removeListeners];
 }
 
 -(void)itemDidFinishPlaying:(NSNotification *) notification {
     // Will be called when AVPlayer finishes playing playerItem
+    NSLog(@"HELLO IT'S HERE ITEM");
     [self stop];
+//    [self removeListeners];
     [self sendStatusEvents:READY];
 }
 
@@ -133,18 +138,6 @@ RCT_EXPORT_METHOD(prepare:(NSString *)path
         playerItem = (RNSPlayerItem *)[RNSPlayerItem playerItemWithAsset: asset];
         player = [[RNSPlayer alloc]
                   initWithPlayerItem:playerItem];
-        // setup event listners
-        [player addObserver:self forKeyPath:@"status" options:0 context:nil];
-        [player addObserver:self forKeyPath:@"rate" options:0 context:nil];
-        CMTime timeInterval = CMTimeMakeWithSeconds(1, 1);
-        [player addPeriodicTimeObserverForInterval:(timeInterval) queue:dispatch_get_main_queue() usingBlock:^(CMTime time){
-            NSTimeInterval seconds = CMTimeGetSeconds(time);
-            NSInteger intSec = seconds;
-//            NSString* strSec = [NSString stringWithFormat:@"%li", intSec];
-            [self sendPositionEvents:[NSString stringWithFormat:@"%li", intSec]];
-//            NSLog(@"[AudioPlayer] player position: %@", strSec);
-        }];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
         //
         Float64 totalDurationSeconds = CMTimeGetSeconds(player.currentItem.asset.duration);
         NSDictionary* response = @{@"duration": @(totalDurationSeconds * 1000), @"path": url};
@@ -162,10 +155,11 @@ RCT_EXPORT_METHOD(prepare:(NSString *)path
 }
 
 
-RCT_EXPORT_METHOD( play:
+RCT_EXPORT_METHOD(play:
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
+    [self startListeners];
     [player play];
     [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
@@ -207,6 +201,7 @@ RCT_EXPORT_METHOD(setVolume: (float)volume)
 // resume audio
 RCT_EXPORT_METHOD(resume:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
+    [self startListeners];
     [player play];
     [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
@@ -216,6 +211,7 @@ RCT_EXPORT_METHOD(resume:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRej
 RCT_EXPORT_METHOD(restart:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     [self stop];
+    [self startListeners];
     [player play];
     [self sendStatusEvents:PLAYING];
     resolve([NSNull null]);
@@ -225,6 +221,26 @@ RCT_EXPORT_METHOD(seekTo:(float)seekValue)
 {
     CMTime newTime = CMTimeMakeWithSeconds(seekValue, 1);
     [player seekToTime:newTime];
+}
+
+-(void)startListeners {
+    // setup event listners
+    [player addObserver:self forKeyPath:@"status" options:0 context:nil];
+    [player addObserver:self forKeyPath:@"rate" options:0 context:nil];
+    CMTime interval = CMTimeMakeWithSeconds(0.5, NSEC_PER_SEC);
+    timeObserverToken = [player addPeriodicTimeObserverForInterval:(interval) queue:dispatch_get_main_queue() usingBlock:^(CMTime time){
+        NSTimeInterval seconds = CMTimeGetSeconds(time);
+        NSInteger intSec = seconds;
+        //            NSString* strSec = [NSString stringWithFormat:@"%li", intSec];
+        [self sendPositionEvents:[NSString stringWithFormat:@"%li", intSec * 1000]];
+        //            NSLog(@"[AudioPlayer] player position: %@", strSec);
+    }];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(itemDidFinishPlaying:) name:AVPlayerItemDidPlayToEndTimeNotification object:player.currentItem];
+}
+
+-(void)removeListeners {
+    // setup event listners
+    [player removeTimeObserver:timeObserverToken];
 }
 
 
