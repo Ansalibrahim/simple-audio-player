@@ -4,8 +4,6 @@
 #import "RNSPlayerItem.h"
 #import <AVFoundation/AVFoundation.h>
 
-
-
 @implementation RNSimpleAudioPlayer {
     RNSPlayer* player;
     AVURLAsset *asset;
@@ -15,12 +13,13 @@
 
 - (dispatch_queue_t)methodQueue
 {
-    return dispatch_get_main_queue();
+//    return dispatch_get_main_queue();
+    return dispatch_queue_create("react-native-simple-audio-player", DISPATCH_QUEUE_SERIAL);
 }
 
 + (BOOL)requiresMainQueueSetup
 {
-    return YES;
+    return NO;
 }
 
 - (NSDictionary *)constantsToExport
@@ -112,7 +111,7 @@ RCT_EXPORT_MODULE()
     if ([keyPath isEqualToString:@"status"]) {
         NSDictionary* event = @{@"event": @"status", @"status": [[NSNumber numberWithFloat:player.status] stringValue]};
         [self tellJs:event];
-        NSLog(@"[AudioPlayer] player status: %li", player.status);
+//        NSLog(@"[AudioPlayer] player status: %li", player.status);
     } else if ([keyPath isEqualToString:@"rate"]) {
         float rate = [change[NSKeyValueChangeNewKey] floatValue];
         NSLog(@"[AudioPlayer] player rate: %f", rate);
@@ -245,4 +244,3 @@ RCT_EXPORT_METHOD(seekTo:(float)seekValue)
 
 
 @end
-
