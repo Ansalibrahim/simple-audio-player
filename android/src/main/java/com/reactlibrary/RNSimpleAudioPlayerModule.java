@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Environment;
 
 import androidx.annotation.Nullable;
@@ -80,138 +81,170 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
     statusTypes.put("PAUSED", PAUSED);
     statusTypes.put("ERROR", ERROR);
     statusTypes.put("IDLE", IDLE);
-    
+
     constants.put("STATUS", statusTypes);
     return constants;
   }
 
   @ReactMethod
   public void prepare(final String path, final Promise promise) {
-    sendStatusEvents(PREPARING);
-    final Activity currentActivity = getCurrentActivity();
-    int readPermission = ActivityCompat.checkSelfPermission(currentActivity, Manifest.permission.READ_EXTERNAL_STORAGE);
-    if (readPermission != PackageManager.PERMISSION_GRANTED) {
-      String[] PERMISSIONS = {
-              Manifest.permission.READ_EXTERNAL_STORAGE,
-      };
-      ((PermissionAwareActivity) currentActivity).requestPermissions(PERMISSIONS, 1, new PermissionListener() {
-        @Override
-        public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-          if (requestCode == 1) {
-            int readPermission = ActivityCompat.checkSelfPermission(currentActivity, Manifest.permission.READ_EXTERNAL_STORAGE);
-            if (readPermission != PackageManager.PERMISSION_GRANTED) {
-              // user rejected permission request
-              promise.reject("Error", "User rejected permission");
-              sendStatusEvents(IDLE);
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        // Background Code
+        sendStatusEvents(PREPARING);
+        final Activity currentActivity = getCurrentActivity();
+        int readPermission = ActivityCompat.checkSelfPermission(currentActivity, Manifest.permission.READ_EXTERNAL_STORAGE);
+        if (readPermission != PackageManager.PERMISSION_GRANTED) {
+          String[] PERMISSIONS = {
+                  Manifest.permission.READ_EXTERNAL_STORAGE,
+          };
+          ((PermissionAwareActivity) currentActivity).requestPermissions(PERMISSIONS, 1, new PermissionListener() {
+            @Override
+            public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+              if (requestCode == 1) {
+                int readPermission = ActivityCompat.checkSelfPermission(currentActivity, Manifest.permission.READ_EXTERNAL_STORAGE);
+                if (readPermission != PackageManager.PERMISSION_GRANTED) {
+                  // user rejected permission request
+                  promise.reject("Error", "User rejected permission");
+                  sendStatusEvents(IDLE);
+                  return true;
+                }
+                // permissions available
+                 prepareMediaPlayer(path, promise);
+                return true;
+              }
               return true;
             }
-            // permissions available
-            prepareMediaPlayer(path, promise);
-            return true;
-          }
-          return true;
+          });
+        } else {
+          prepareMediaPlayer(path, promise);
         }
-      });
-    } else {
-      prepareMediaPlayer(path, promise);
-    }
+        return null;
+      }
+    }.execute();
+
   }
 
   @ReactMethod
   public void play(final Promise promise) {
-    try {
-      if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        try {
+          if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
 //        mediaPlayer.start();
-        runMedia();
-        WritableMap response = Arguments.createMap();
-        promise.resolve(response);
-        sendStatusEvents(PLAYING);
-      } else {
-        promise.reject("Error", "Unable to play audio now.");
+            runMedia();
+            WritableMap response = Arguments.createMap();
+            promise.resolve(response);
+            sendStatusEvents(PLAYING);
+          } else {
+            promise.reject("Error", "Unable to play audio now.");
+          }
+        } catch (IllegalStateException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        }
+        return null;
       }
-    } catch (IllegalStateException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    }
+    }.execute();
   }
 
   @ReactMethod
   public void pause(final Promise promise) {
-    try {
-      if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-        mediaPlayer.pause();
-        observer.stop();
-        thread.join();
-        WritableMap response = Arguments.createMap();
-        promise.resolve(response);
-        sendStatusEvents(PAUSED);
-      } else {
-        promise.reject("Error", "Unable to play audio now.");
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        try {
+          if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+            observer.stop();
+            thread.join();
+            WritableMap response = Arguments.createMap();
+            promise.resolve(response);
+            sendStatusEvents(PAUSED);
+          } else {
+            promise.reject("Error", "Unable to play audio now.");
+          }
+        } catch (IllegalStateException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        }
+        return null;
       }
-    } catch (IllegalStateException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    }
+    }.execute();
   }
 
   @ReactMethod
   public void stop(final Promise promise) {
-    try {
-      if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-        mediaPlayer.stop();
-        WritableMap response = Arguments.createMap();
-        promise.resolve(response);
-        sendStatusEvents(READY);
-        if (thread != null) {
-          observer.stop();
-          thread.join();
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        try {
+          if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.stop();
+            WritableMap response = Arguments.createMap();
+            promise.resolve(response);
+            sendStatusEvents(READY);
+            if (thread != null) {
+              observer.stop();
+              thread.join();
+            }
+          } else {
+            promise.reject("Error", "Unable to play audio now.");
+          }
+        } catch (IllegalStateException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
         }
-      } else {
-        promise.reject("Error", "Unable to play audio now.");
+        return null;
       }
-    } catch (IllegalStateException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    }
+    }.execute();
   }
 
   @ReactMethod
   public void restart(final Promise promise) {
-    try {
-      if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-        mediaPlayer.stop();
-        mediaPlayer.start();
-        sendStatusEvents(PLAYING);
-      } else {
-        promise.reject("Error", "Unable to play audio now.");
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        try {
+          if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.stop();
+            mediaPlayer.start();
+            sendStatusEvents(PLAYING);
+          } else {
+            promise.reject("Error", "Unable to play audio now.");
+          }
+        } catch (IllegalStateException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        }
+        return null;
       }
-    } catch (IllegalStateException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    }
+    }.execute();
   }
 
   @ReactMethod
   public void resume(final Promise promise) {
-    try {
-      if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-        mediaPlayer.start();
-        WritableMap response = Arguments.createMap();
-        promise.resolve(response);
-        sendStatusEvents(PLAYING);
-      } else {
-        promise.reject("Error", "Unable to play audio now.");
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        try {
+          if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+            mediaPlayer.start();
+            WritableMap response = Arguments.createMap();
+            promise.resolve(response);
+            sendStatusEvents(PLAYING);
+          } else {
+            promise.reject("Error", "Unable to play audio now.");
+          }
+        } catch (IllegalStateException e) {
+          e.printStackTrace();
+          promise.reject("Error", "cannot play audio now");
+        }
+        return null;
       }
-    } catch (IllegalStateException e) {
-      e.printStackTrace();
-      promise.reject("Error", "cannot play audio now");
-    }
+    }.execute();
   }
 
   @ReactMethod
@@ -221,45 +254,50 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
     }
   }
 
-  private void prepareMediaPlayer(String path, final Promise promise) {
-    if (path == null || path == "") {
-      promise.reject("Error", "File not found.");
-      sendStatusEvents(IDLE);
-    }
-    final WritableMap response = Arguments.createMap();
-    try {
-      if (path.startsWith("http")) {
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mediaPlayer.setDataSource(path);
-        mediaPlayer.prepare();
-        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-          @Override
-          public void onPrepared(MediaPlayer mediaPlayer) {
-            response.putString("duration", mediaPlayer.getDuration() + "");
-            promise.resolve(response);
-            sendStatusEvents(READY);
+  private void prepareMediaPlayer(final String path, final Promise promise) {
+    new AsyncTask<Void, Void, Void>() {
+      protected Void doInBackground(Void... params) {
+        if (path == null || path == "") {
+          promise.reject("Error", "File not found.");
+          sendStatusEvents(IDLE);
+        }
+        final WritableMap response = Arguments.createMap();
+        try {
+          if (path.startsWith("http")) {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mediaPlayer.setDataSource(path);
+            mediaPlayer.prepare();
+            mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+              @Override
+              public void onPrepared(MediaPlayer mediaPlayer) {
+                response.putString("duration", mediaPlayer.getDuration() + "");
+                promise.resolve(response);
+                sendStatusEvents(READY);
+              }
+            });
+          } else {
+            Uri uri = getFileUri(path);
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(reactContext, uri);
+            mediaPlayer.prepare();
+            mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+              @Override
+              public void onPrepared(MediaPlayer mediaPlayer) {
+                response.putString("duration", mediaPlayer.getDuration() + "");
+                promise.resolve(response);
+                sendStatusEvents(READY);
+              }
+            });
           }
-        });
-      } else {
-        Uri uri = getFileUri(path);
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setDataSource(reactContext, uri);
-        mediaPlayer.prepare();
-        mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-          @Override
-          public void onPrepared(MediaPlayer mediaPlayer) {
-            response.putString("duration", mediaPlayer.getDuration() + "");
-            promise.resolve(response);
-            sendStatusEvents(READY);
-          }
-        });
+        } catch (IOException e) {
+          e.printStackTrace();
+          promise.reject("Error", "File not found.");
+          sendStatusEvents(IDLE);
+        }
+        return null;
       }
-    } catch (IOException e) {
-      e.printStackTrace();
-      promise.reject("Error", "File not found.");
-      sendStatusEvents(IDLE);
-    }
+    }.execute();
   }
 
   private Uri getFileUri(String path) {
@@ -362,3 +400,4 @@ public class RNSimpleAudioPlayerModule extends ReactContextBaseJavaModule {
   }
 
 }
+
